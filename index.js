@@ -2,6 +2,8 @@ const {program} = require("commander")
 const express = require('express')
 const fs = require('fs')
 const multer = require('multer')
+const swaggerJSDoc = require("swagger-jsdoc")
+const swaggerUI = require('swagger-ui-express')
 
 program
     .requiredOption('-h, --host <host>', 'Your host')
@@ -20,7 +22,45 @@ app.listen(opts.port, opts.host, () => {
     console.log(`Server run on http://${opts.host}:${opts.port}`)
 })
 
+const options = {
+    failOnErrors: true,
+    definition: {
+      openapi: '3.0.0',
+      info: {
+        title: 'Створювач нотаток',
+        version: '1.0.0',
+      },
+    },
+    apis: ['index.js'],
+};
+  
+const openapiSpecification = swaggerJSDoc(options);
+
 app.use(express.text())
+app.use('/docs', swaggerUI.serve, swaggerUI.setup(openapiSpecification));
+
+/**
+ * @swagger
+ * /notes:
+ *  get:
+ *   summary: Отримати список усіх нотаток
+ *   tags:
+ *    - notes
+ *   responses:
+ *    '200':
+ *      description: Успіх
+ *      content:
+ *        json:
+ *         schema:
+ *          items:
+ *           type: object
+ *           properties:
+ *            name:
+ *             type: string
+ *            text:
+ *             type: string
+ *          example: [{"name1":"text1"}, {"name2":"text2"}]
+ */
 
 app.get('/notes', (req, res) => {
     fs.promises.readFile(opts.cache)
@@ -28,6 +68,30 @@ app.get('/notes', (req, res) => {
             res.status(200).type('json').send(notes)
         })
 })
+
+/**
+ * @swagger
+ * /notes/{note_name}:
+ *  get:
+ *   summary: Отримати текст нотатки з ім'ям "note_name"
+ *   tags:
+ *    - notes
+ *   parameters:
+ *    - name: note_name
+ *      in : path
+ *      requested: true
+ *      schema:
+ *        type: string
+ *   responses:
+ *    '200':
+ *      description: Успіх
+ *      content:
+ *        text:
+ *         schema:
+ *          example: "note text"
+ *    '404':
+ *       description: Такої нотатки не існує
+ */
 
 app.get('/notes/:name', (req, res) => {
     fs.promises.readFile(opts.cache)
@@ -41,6 +105,31 @@ app.get('/notes/:name', (req, res) => {
             res.status(404).end()
         })
 })
+
+/**
+ * @swagger
+ * /notes/{note_name}:
+ *  put:
+ *   summary: Змінити вміст нотатки "name" на інший
+ *   tags:
+ *    - notes
+ *   parameters:
+ *    - name: note_name
+ *      in: path
+ *      requested: true
+ *      schema:
+ *       type: string
+ *   requestBody:
+ *      requested: true
+ *      content:
+ *       text/plain:
+ *        type: string
+ *   responses:
+ *     '201':
+ *       description: Вміст змінено
+ *     '404':
+ *       description: Такої нотатки не існує
+ */
 
 app.put('/notes/:name', (req, res) => {
     fs.promises.readFile(opts.cache)
@@ -56,6 +145,31 @@ app.put('/notes/:name', (req, res) => {
             res.status(404).end()
         })
 })
+
+/**
+ * @swagger
+ * /write:
+ *  post:
+ *   tags:
+ *    - add
+ *   summary: Додати нову нотатку
+ *   requestBody:
+ *    requested: true
+ *    content:
+ *     multipart/form-data:
+ *      schema:
+ *       type: object
+ *       properties:
+ *        note_name:
+ *         type: string
+ *        note:
+ *         type: string
+ *   responses:
+ *     '201':
+ *       description: Нотатку створено
+ *     '400':
+ *       description: Нотатка вже існує
+ */
 
 app.post('/write', multer().none(), (req, res) => {
     fs.promises.readFile(opts.cache)
@@ -80,6 +194,25 @@ app.post('/write', multer().none(), (req, res) => {
         })
 })
 
+/**
+ * @swagger
+ * /notes/{note_name}:
+ *  delete:
+ *   tags:
+ *    - notes
+ *   parameters:
+ *    - name: note_name
+ *      requested: true
+ *      in: path
+ *      schema:
+ *       type: string
+ *   responses:
+ *    '200':
+ *      description: Нотатку видалено
+ *    '404':
+ *      description: Такої нотатки не існувало
+ */
+
 app.delete('/notes/:name', (req, res) => {
     fs.promises.readFile(opts.cache)
         .then(json_notes => {
@@ -101,6 +234,20 @@ app.delete('/notes/:name', (req, res) => {
             }
         })
 })
+
+/**
+ * @swagger
+ * /UploadForm.html:
+ *  get:
+ *   tags:
+ *    - form
+ *   responses:
+ *    '200':
+ *     description: Форма успішно виведена
+ *     content:
+ *      text/html:
+ *       type: string
+ */
 
 app.get('/UploadForm.html', (req, res) => {
     fs.promises.readFile('UploadForm.html')
